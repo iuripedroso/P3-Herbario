@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "307128876874",
+    "project_id": "herbario-d1ace",
+    "storage_bucket": "herbario-d1ace.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:307128876874:android:95734bcb946c67ab52cbb3",
+        "android_client_info": {
+          "package_name": "com.example.jogos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDiClRxdVx8i70NUGXcq18DWdOoJtLqXbY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

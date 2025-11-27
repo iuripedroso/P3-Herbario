@@ -4,7 +4,10 @@ import 'package:plantas/model/planta_model.dart';
 class DetalhesPlantaPage extends StatelessWidget {
   final Planta planta;
 
-  DetalhesPlantaPage({Key? key, required this.planta}) : super(key: key);
+  const DetalhesPlantaPage({
+    super.key,
+    required this.planta,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,12 +17,12 @@ class DetalhesPlantaPage extends StatelessWidget {
         backgroundColor: Colors.green[600],
         title: Text(planta.nome),
         centerTitle: true,
-        titleTextStyle: TextStyle(
+        titleTextStyle: const TextStyle(
           color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -60,7 +63,7 @@ class DetalhesPlantaPage extends StatelessWidget {
             Container(
               color: Colors.white,
               child: Padding(
-                padding: EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -89,9 +92,9 @@ class DetalhesPlantaPage extends StatelessWidget {
                       label: "Ambiente",
                       value: planta.ambiente,
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Divider(color: Colors.grey[300]),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
                       "Descrição",
                       style: TextStyle(
@@ -100,7 +103,7 @@ class DetalhesPlantaPage extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       planta.descricao,
                       style: TextStyle(
@@ -125,21 +128,21 @@ class DetalhesPlantaPage extends StatelessWidget {
     required String value,
   }) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Icon(icon, color: Colors.green[600], size: 20),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
                   label,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  style: TextStyle(color: const Color.fromARGB(255, 255, 255, 255), fontSize: 14),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   value,
                   style: TextStyle(color: Colors.grey[800], fontSize: 18),

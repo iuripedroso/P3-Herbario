@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:plantas/database/helper/planta_helper.dart';
-import 'package:plantas/view/planta_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:plantas/service/planta_service.dart';
 import 'package:plantas/model/planta_model.dart';
+import 'package:plantas/view/planta_page.dart';
 import 'package:plantas/view/detalhes_planta_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -12,82 +13,97 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  PlantaHelper helper = PlantaHelper();
-  List<Planta> _listaCompletaPlantas = [];
-  List<Planta> _plantasFiltradas = [];
-  final _controladorBusca = TextEditingController();
+  final PlantaService _plantaService = PlantaService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  final TextEditingController _searchController = TextEditingController();
+  String _termoPesquisa = '';
 
   @override
   void initState() {
     super.initState();
-    _atualizarListaPlantas();
-    _controladorBusca.addListener(() {
-      _filtrarPlantas(_controladorBusca.text);
-    });
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
-    _controladorBusca.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  void _atualizarListaPlantas() {
-    helper.buscarTodasPlantas().then((list) {
-      setState(() {
-        _listaCompletaPlantas = list;
-        _plantasFiltradas = list;
-        _controladorBusca.clear();
-      });
-    });
-  }
-
-  void _filtrarPlantas(String query) {
-    List<Planta> listaFiltrada;
-    if (query.isEmpty) {
-      listaFiltrada = List.from(_listaCompletaPlantas);
-    } else {
-      listaFiltrada = _listaCompletaPlantas.where((planta) {
-        return planta.nome.toLowerCase().contains(query.toLowerCase());
-      }).toList();
-    }
+  void _onSearchChanged() {
     setState(() {
-      _plantasFiltradas = listaFiltrada;
+      _termoPesquisa = _searchController.text.toLowerCase();
     });
   }
 
-  Future<bool?> _confirmarExcluir({
-    required BuildContext context,
-    required String nomePlanta,
-  }) {
-    return showDialog<bool>(
+  Future<void> _logout() async {
+    await _auth.signOut();
+  }
+
+  void _abrirFormulario({Planta? planta}) async {
+    final resultado = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlantaPage(planta: planta),
+      ),
+    );
+
+    if (resultado != null) {
+      setState(() {});
+    }
+  }
+
+  void _abrirDetalhes(Planta planta) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetalhesPlantaPage(planta: planta),
+      ),
+    );
+  }
+
+  void _deletarPlanta(String id) {
+    showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          titleTextStyle: TextStyle(color: Colors.grey[800], fontSize: 20, fontWeight: FontWeight.bold),
-          contentTextStyle: TextStyle(color: Colors.grey[700]),
-          title: Text('Excluir Planta?'),
-          content: Text(
-            'Tem certeza que deseja excluir a planta "$nomePlanta"?\n\nEsta ação não pode ser desfeita.',
+      builder: (context) => AlertDialog(
+        title: const Text("Deletar Planta"),
+        content: const Text("Tem certeza que deseja deletar esta planta?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar"),
           ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancelar', style: TextStyle(color: Colors.grey[600])),
-              onPressed: () {
-                Navigator.of(context).pop(false);
-              },
-            ),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-              child: Text('Excluir'),
-              onPressed: () {
-                Navigator.of(context).pop(true);
-              },
-            ),
-          ],
-        );
-      },
+          TextButton(
+            onPressed: () async {
+              try {
+                await _plantaService.deletarPlanta(id);
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Planta deletada com sucesso!"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  setState(() {});
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Erro ao deletar: $e"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Deletar", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -96,271 +112,155 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: Colors.green[600],
-        title: Text("Herbário"),
-        centerTitle: true,
-        titleTextStyle: TextStyle(
+        title: const Text("Minhas Plantas"),
+        titleTextStyle: const TextStyle(
           color: Colors.white,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
+        backgroundColor: Colors.green[600],
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
           Padding(
-            padding: EdgeInsets.only(right: 12.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.green[400],
-              radius: 16,
-              child: Icon(Icons.eco, size: 20, color: Colors.white),
+            padding: const EdgeInsets.all(8.0),
+            child: _buildSearchBar(),
+          ),
+          Expanded(
+            child: StreamBuilder<List<Planta>>(
+              stream: _plantaService.buscarTodasPlantas(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text("Erro: ${snapshot.error}"),
+                  );
+                }
+
+                final todasPlantas = snapshot.data ?? [];
+                
+                final plantasFiltradas = todasPlantas.where((planta) {
+                  if (_termoPesquisa.isEmpty) {
+                    return true;
+                  }
+                  return planta.nome.toLowerCase().contains(_termoPesquisa);
+                }).toList();
+                
+                if (plantasFiltradas.isEmpty) {
+                  return Center(
+                    child: Text(_termoPesquisa.isEmpty 
+                      ? "Nenhuma planta cadastrada." 
+                      : "Nenhuma planta encontrada com o termo: \"${_searchController.text}\""),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: plantasFiltradas.length,
+                  itemBuilder: (context, index) {
+                    final planta = plantasFiltradas[index];
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      child: ListTile(
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.network(
+                            planta.imagemUrl,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 50,
+                                height: 50,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.local_florist),
+                              );
+                            },
+                          ),
+                        ),
+                        title: Text(planta.nome),
+                        subtitle: Text(planta.tipo),
+                        onTap: () => _abrirDetalhes(planta),
+                        trailing: PopupMenuButton(
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              child: const Text("Editar"),
+                              onTap: () => _abrirFormulario(planta: planta),
+                            ),
+                            PopupMenuItem(
+                              child: const Text("Deletar", style: TextStyle(color: Colors.red)),
+                              onTap: () {
+                                Future.delayed(Duration.zero, () => _deletarPlanta(planta.id!));
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _mostrarPaginaPlanta();
-        },
+        onPressed: () => _abrirFormulario(),
         backgroundColor: Colors.green[600],
-        child: Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(10.0),
-            child: TextField(
-              controller: _controladorBusca,
-              style: TextStyle(color: Colors.grey[800]),
-              decoration: InputDecoration(
-                hintText: "Buscar no herbário...",
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.clear, color: Colors.grey[500]),
-                  onPressed: () {
-                    _controladorBusca.clear();
-                  },
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: Colors.green[600]!),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GridView.builder(
-              padding: EdgeInsets.fromLTRB(10.0, 0, 10.0, 10.0),
-              itemCount: _plantasFiltradas.length,
-              itemBuilder: (context, index) {
-                return _cartaoPlanta(context, index, _plantasFiltradas[index]);
-              },
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10.0,
-                mainAxisSpacing: 10.0,
-                childAspectRatio: 0.7,
-              ),
-            ),
+    );
+  }
+  
+  Widget _buildSearchBar() {
+    return Container(
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 3,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _cartaoPlanta(BuildContext context, int index, Planta planta) {
-    return GestureDetector(
-      onTap: () {
-        _mostrarOpcoes(context, planta);
-      },
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        color: Colors.white,
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Expanded(
-              child: Image.network(
-                planta.imagemUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[200],
-                    child: Icon(
-                      Icons.local_florist,
-                      color: Colors.grey[400],
-                      size: 50,
-                    ),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.green[600],
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                    ),
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    planta.nome,
-                    style: TextStyle(
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    planta.tipo,
-                    style: TextStyle(fontSize: 12.0, color: Colors.green[600]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: "Pesquisar plantas...",
+          hintStyle: TextStyle(color: Colors.grey[600]),
+          prefixIcon: const Icon(Icons.search, color: Colors.grey),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          suffixIcon: _termoPesquisa.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.grey),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _termoPesquisa = '';
+                    });
+                  },
+                )
+              : null,
         ),
+        style: const TextStyle(color: Colors.black),
       ),
-    );
-  }
-
-  void _mostrarOpcoes(BuildContext context, Planta planta) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.0),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  planta.nome,
-                  style: TextStyle(
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Divider(color: Colors.grey[300], height: 1),
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  _mostrarPaginaDetalhes(planta: planta);
-                },
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.green[600]),
-                      SizedBox(width: 16.0),
-                      Text(
-                        "Ver Detalhes",
-                        style: TextStyle(color: Colors.grey[800], fontSize: 16.0),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  _mostrarPaginaPlanta(planta: planta);
-                },
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, color: Colors.green[600]),
-                      SizedBox(width: 16.0),
-                      Text(
-                        "Editar",
-                        style: TextStyle(color: Colors.grey[800], fontSize: 16.0),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () async {
-                  Navigator.pop(context);
-                  final bool? shouldDelete = await _confirmarExcluir(
-                    context: context,
-                    nomePlanta: planta.nome,
-                  );
-                  if (shouldDelete == true) {
-                    if (planta.id != null) {
-                      await helper.deletarPlanta(planta.id!);
-                      _atualizarListaPlantas();
-                    }
-                  }
-                },
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline, color: Colors.redAccent),
-                      SizedBox(width: 16.0),
-                      Text(
-                        "Excluir",
-                        style: TextStyle(color: const Color.fromARGB(255, 12, 10, 10), fontSize: 16.0),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _mostrarPaginaPlanta({Planta? planta}) async {
-    final plantaAtualizada = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => PlantaPage(planta: planta)),
-    );
-    if (plantaAtualizada != null) {
-      _atualizarListaPlantas();
-    }
-  }
-
-  void _mostrarPaginaDetalhes({required Planta planta}) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => DetalhesPlantaPage(planta: planta)),
     );
   }
 }

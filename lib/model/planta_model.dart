@@ -1,18 +1,5 @@
-//representação do banco
-
-String tabelaPlantas = "tabelaPlantas";
-String colunaId = "colunaId";
-String colunaNome = "colunaNome";
-String colunaFamilia = "colunaFamilia";
-String colunaGenero = "colunaGenero";
-String colunaImagemUrl = "colunaImagemUrl";
-String colunaComestivel = "colunaComestivel";
-String colunaDescricao = "colunaDescricao";
-String colunaTipo = "colunaTipo";
-String colunaAmbiente = "colunaAmbiente";
-
 class Planta {
-  int? id;
+  String? id;
   String nome;
   String familia;
   String genero;
@@ -34,38 +21,35 @@ class Planta {
     required this.ambiente,
   });
 
-  //pega um Map vindo do SQLite e transforma em um objeto.
-  Planta.doMap(Map<String, dynamic> map)
-      : id = map[colunaId],
-        nome = map[colunaNome],
-        familia = map[colunaFamilia],
-        genero = map[colunaGenero],
-        imagemUrl = map[colunaImagemUrl],
-        comestivel = map[colunaComestivel],
-        descricao = map[colunaDescricao],
-        tipo = map[colunaTipo],
-        ambiente = map[colunaAmbiente];
+  factory Planta.fromMap(Map<String, dynamic> map, String docId) {
+    return Planta(
+      id: docId,
+      nome: map['nome'] ?? '',
+      familia: map['familia'] ?? '',
+      genero: map['genero'] ?? '',
+      imagemUrl: map['imagemUrl'] ?? '',
+      comestivel: map['comestivel'] ?? 'Não',
+      descricao: map['descricao'] ?? '',
+      tipo: map['tipo'] ?? 'Flores',
+      ambiente: map['ambiente'] ?? 'Interno',
+    );
+  }
 
-  //pega um objeto e transforma em map
-  Map<String, dynamic> paraMap() {
-    Map<String, dynamic> map = {
-      colunaNome: nome,
-      colunaFamilia: familia,
-      colunaGenero: genero,
-      colunaImagemUrl: imagemUrl,
-      colunaComestivel: comestivel,
-      colunaDescricao: descricao,
-      colunaTipo: tipo,
-      colunaAmbiente: ambiente,
+  Map<String, dynamic> toMap() {
+    return {
+      'nome': nome,
+      'familia': familia,
+      'genero': genero,
+      'imagemUrl': imagemUrl,
+      'comestivel': comestivel,
+      'descricao': descricao,
+      'tipo': tipo,
+      'ambiente': ambiente,
     };
-    if (id != null) {
-      map[colunaId] = id;
-    }
-    return map;
   }
 
   @override
   String toString() {
-    return "Planta(id: $id, nome: $nome, familia: $familia, tipo: $tipo)";
+    return 'Planta(id: $id, nome: $nome, familia: $familia, tipo: $tipo)';
   }
 }

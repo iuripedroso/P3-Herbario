@@ -8,7 +8,7 @@ class MyDropdown extends StatelessWidget {
   final IconData icone;
   final void Function(String?)? aoMudar;
 
-  MyDropdown({
+  const MyDropdown({
     super.key,
     required this.textoLabel,
     required this.valor,
@@ -21,7 +21,7 @@ class MyDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: valor,
+      initialValue: valor,
       onChanged: aoMudar,
       isExpanded: true,
       style: TextStyle(color: Colors.grey[800]),
@@ -47,11 +47,11 @@ class MyDropdown extends StatelessWidget {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.redAccent),
+          borderSide: const BorderSide(color: Colors.redAccent),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.redAccent, width: 2),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
       ),
       items: itens.map<DropdownMenuItem<String>>((String valorItem) {

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:plantas/view/home_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:plantas/app/app.dart';
 
-void main() {
-  runApp(MaterialApp(
-    home: HomePage(),
-    debugShowCheckedModeBanner: false,
-  ));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(const MyApp());
 }
